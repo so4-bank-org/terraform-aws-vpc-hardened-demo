@@ -54,13 +54,17 @@ regulatory approval.
 ## Verification and release controls
 
 CI verifies the exact upstream Git tree, then runs format, initialization,
-validation and mocked plan tests without AWS credentials. It has read-only
-repository permission and never applies changes. Upstream source files are
-kept byte-for-byte, so formatting checks apply to the wrapper and example only.
+validation, mocked plan tests, HIGH/CRITICAL Terraform configuration scanning,
+and secret scanning without AWS credentials. Its actions are pinned to commit
+SHAs, it has read-only repository permission, and it never applies changes.
+Upstream source files are kept byte-for-byte, so formatting checks apply to
+the wrapper and example only. The IaC scan excludes upstream example folders;
+those examples are not part of the hardened consumer interface.
+
 Before using this as an enterprise release channel, configure enforced branch
 and tag rules, independent reviewers, required CI, signed/attested releases,
-secret scanning, and immutable approval evidence. A single-owner demo cannot
-substitute for two-person approval or separation of duties.
+and immutable approval evidence. A single-owner demo cannot substitute for
+two-person approval or separation of duties.
 
 Run locally:
 
