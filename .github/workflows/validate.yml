@@ -21,8 +21,12 @@ jobs:
         with:
           terraform_version: 1.16.1
           terraform_wrapper: false
-      - name: Format
-        run: terraform fmt -check -recursive
+      - name: Verify vendored upstream snapshot
+        run: bash scripts/verify-upstream-snapshot.sh
+      - name: Format wrapper and example
+        run: |
+          terraform fmt -check .
+          terraform fmt -check examples/private
       - name: Initialize without backend
         run: terraform init -backend=false -input=false -lockfile=readonly
       - name: Validate
