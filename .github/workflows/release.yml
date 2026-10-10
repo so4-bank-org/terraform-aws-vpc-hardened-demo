@@ -1,0 +1,87 @@
+name: Release module
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: New SemVer tag (vX.Y.Z)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: module-release
+  cancel-in-progress: false
+
+jobs:
+  approve:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: module-release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Verify vendored upstream snapshot
+        run: bash scripts/verify-upstream-snapshot.sh
+      - name: Verify release request
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Version must be an exact SemVer tag such as v1.2.3." >&2
+            exit 1
+          fi
+
+          remote_head="$(git ls-remote --symref origin HEAD)"
+          default_ref="$(awk '$1 == "ref:" && $3 == "HEAD" { print $2 }' <<< "$remote_head")"
+          default_sha="$(awk '$2 == "HEAD" && $1 != "ref:" { print $1 }' <<< "$remote_head")"
+          if [[ "$default_ref" != refs/heads/main || "$default_sha" != "$(git rev-parse HEAD)" ]]; then
+            echo "This run must use the current commit of the default main branch." >&2
+            exit 1
+          fi
+
+          if [[ -n "$(git ls-remote --refs origin "refs/tags/$VERSION")" ]]; then
+            echo "Tag $VERSION already exists on origin." >&2
+            exit 1
+          fi
+
+  release:
+    needs: approve
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Create approved release tag
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+
+          remote_head="$(git ls-remote --symref origin HEAD)"
+          default_ref="$(awk '$1 == "ref:" && $3 == "HEAD" { print $2 }' <<< "$remote_head")"
+          default_sha="$(awk '$2 == "HEAD" && $1 != "ref:" { print $1 }' <<< "$remote_head")"
+          if [[ "$default_ref" != refs/heads/main || "$default_sha" != "$(git rev-parse HEAD)" ]]; then
+            echo "The approved commit is no longer the current main commit." >&2
+            exit 1
+          fi
+
+          if [[ -n "$(git ls-remote --refs origin "refs/tags/$VERSION")" ]]; then
+            echo "Tag $VERSION already exists on origin." >&2
+            exit 1
+          fi
+
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              tag -a "$VERSION" -m "Release $VERSION"
+          git push origin "refs/tags/$VERSION:refs/tags/$VERSION"

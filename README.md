@@ -61,10 +61,20 @@ Upstream source files are kept byte-for-byte, so formatting checks apply to
 the wrapper and example only. The IaC scan excludes upstream example folders;
 those examples are not part of the hardened consumer interface.
 
-Before using this as an enterprise release channel, configure enforced branch
-and tag rules, independent reviewers, required CI, signed/attested releases,
-and immutable approval evidence. A single-owner demo cannot substitute for
-two-person approval or separation of duties.
+To publish a version, merge the approved change to `main`, then run
+**Actions → Release module → Run workflow** on `main` with a new tag such as
+`v1.2.3`. The `module-release` environment must require an independent reviewer
+and prevent self-review, and allow deployments only from `main`. After approval,
+the first job verifies the vendored source and current default-branch commit.
+The `v*` tag rule requires a successful `module-release` deployment and the
+`validate` check, and blocks tag updates and deletions. The first job is
+designed to satisfy that deployment requirement before the tag is pushed;
+verify this behavior during the first release before relying on it as a control.
+The second job creates an annotated tag only if that tag does not already exist.
+Once both HCP registry connections are configured,
+verify that the new version appears in **Bank-platform** and **Bank-dev-team**
+before pinning it in consuming workspaces. Keep approval evidence with the
+release record; signed or attested releases are additional controls.
 
 Run locally:
 
