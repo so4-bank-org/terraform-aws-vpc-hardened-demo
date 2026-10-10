@@ -21,11 +21,36 @@ jobs:
         with:
           terraform_version: 1.16.1
           terraform_wrapper: false
-      - name: Format
-        run: terraform fmt -check -recursive
+      - name: Verify vendored upstream snapshot
+        run: bash scripts/verify-upstream-snapshot.sh
+      - name: Format wrapper and example
+        run: |
+          terraform fmt -check .
+          terraform fmt -check examples/private
       - name: Initialize without backend
         run: terraform init -backend=false -input=false -lockfile=readonly
       - name: Validate
         run: terraform validate -no-color
       - name: Mocked plan contracts
         run: terraform test -no-color
+      - name: Scan Terraform configuration
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: config
+          scan-ref: .
+          version: v0.72.0
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          skip-dirs: modules/upstream/examples,.terraform
+          hide-progress: true
+      - name: Scan for secrets
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          version: v0.72.0
+          scanners: secret
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          skip-dirs: .terraform
+          hide-progress: true

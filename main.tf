@@ -8,11 +8,11 @@ locals {
   }
 }
 
-# This public demonstration uses the exact upstream 5.19.0 commit. A regulated
-# client release should change this to an approved, organization-owned mirror
-# after recording its source provenance and granting HCP read access.
+# This child module is the exact upstream v5.19.0 source snapshot, mirrored at
+# commit 961c9b51e3ed3959d9419f019e7085c087bf7297. Keeping the pinned
+# snapshot in this release makes consumer runs independent of Git credentials.
 module "vpc" {
-  source = "git::https://github.com/terraform-aws-modules/terraform-aws-vpc.git?ref=961c9b51e3ed3959d9419f019e7085c087bf7297"
+  source = "./modules/upstream"
 
   name            = var.name
   cidr            = var.vpc_cidr
