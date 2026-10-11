@@ -19,21 +19,34 @@ private mirror.
 - At least two distinct availability zones and one private subnet per zone.
 - No public subnets, internet gateway, NAT gateway or automatic public IPs.
 - Default security group managed with no ingress or egress rules.
-- VPC flow logs for all traffic sent to an existing central S3 bucket.
+- VPC flow logs for all traffic sent to a module-created CloudWatch Logs group.
+- One-year **demo** log retention by default; the log group is preserved on
+  Terraform destroy so deletion of a VPC does not erase its log evidence.
 - Required environment, owner, cost-center and classification tags.
 - Private VPC and non-overlapping subnet CIDR validation.
 
-The caller must provide a bucket with approved delivery permissions, encryption,
-retention, immutability and monitoring. An ARN cannot prove those controls.
-Likewise, this wrapper alone does not enforce IAM, organization policy, account
-boundaries or change approval. Those belong in the platform's HCP Terraform
-policy and run workflow.
+The wrapper creates an IAM delivery role and restricts its trust policy to VPC
+flow logs from the current AWS account and Region. For production, set
+`flow_logs_retention_days` to the approved retention period and supply an
+approved `flow_logs_kms_key_arn` and `flow_logs_permissions_boundary_arn` when
+required by the organization's controls. The null KMS-key default and 365-day
+retention are demo settings, not a universal regulated baseline; production
+KMS, retention and deletion policy are client-specific. The KMS key policy must
+allow the CloudWatch Logs service to use that key. Central log collection,
+access controls, immutability and monitoring still require platform controls
+outside this module. CloudWatch Logs ingestion and retention incur charges.
+An HCP plan-only role can use read-only AWS access. A later apply role needs
+permissions to create the log group and IAM role/policy, plus `iam:PassRole`
+scoped to the generated delivery role and `iam:PassedToService` set to
+`vpc-flow-logs.amazonaws.com`. This wrapper alone does not enforce organization
+policy, account boundaries or change approval; those belong in the platform's
+HCP Terraform policy and run workflow.
 
 ## Example
 
-See [`examples/private/main.tf`](examples/private/main.tf). Set the bucket ARN to
-a real platform-owned bucket before planning. The example does not contain
-credentials and should be used in a disposable account for integration tests.
+See [`examples/private/main.tf`](examples/private/main.tf). No S3 bucket is
+required. The example does not contain credentials and should be used in a
+disposable account for integration tests.
 
 ## HCP Terraform distribution
 
@@ -43,13 +56,23 @@ registry modules do not automatically cross HCP organization boundaries. In
 each consuming workspace, reference the module from its own organization's
 registry and pin an exact version. The same packaged release works in both
 organizations because its child module is local. The Terraform Cloud GitHub
-App should be granted access only to this wrapper repository for publication.
+App needs access to this wrapper repository for publication; grant any
+consumer repositories separately and keep the private upstream mirror outside
+the app installation.
 No apply-capable workspace is needed merely to publish a registry version.
 
 Keep the provider lock file in the *consumer root configuration*; this
 repository's lock file pins CI only. A wrapper cannot lock the consumer's
 provider installation. A public repository and passing CI do not constitute
 regulatory approval.
+
+**Breaking interface change for `v0.2.0`:** changing the flow-log destination
+from S3 to CloudWatch Logs removes the `flow_logs_bucket_arn` input. After
+approval, release tag `v0.2.0`; verify HCP has published version `0.2.0` in
+both the Bank-platform and Bank-dev-team private registries; only then update
+the consumer's exact version pin and remove its bucket input. Never rewrite the
+existing `0.1.0` registry version. The 365-day default is for this demo; set
+the approved retention period for each real regulated workload.
 
 ## Verification and release controls
 

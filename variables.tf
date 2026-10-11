@@ -59,13 +59,33 @@ variable "private_subnet_cidrs" {
   }
 }
 
-variable "flow_logs_bucket_arn" {
-  description = "Existing central S3 bucket ARN for VPC flow logs."
-  type        = string
-  nullable    = false
+variable "flow_logs_retention_days" {
+  description = "CloudWatch flow-log retention in days. The demo defaults to one year; production teams should set their approved finite retention period."
+  type        = number
+  default     = 365
   validation {
-    condition     = can(regex("^arn:(aws|aws-us-gov|aws-cn):s3:::[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$", var.flow_logs_bucket_arn))
-    error_message = "Provide an S3 bucket ARN, without an object path or wildcard."
+    condition     = contains([1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653], var.flow_logs_retention_days)
+    error_message = "Choose a finite CloudWatch Logs retention period from the supported values."
+  }
+}
+
+variable "flow_logs_kms_key_arn" {
+  description = "Optional approved customer-managed KMS key ARN for CloudWatch flow logs; production policy may require this."
+  type        = string
+  default     = null
+  validation {
+    condition     = var.flow_logs_kms_key_arn == null || can(regex("^arn:(aws|aws-us-gov|aws-cn):kms:[a-z0-9-]+:[0-9]{12}:key/[A-Za-z0-9-]+$", var.flow_logs_kms_key_arn))
+    error_message = "Provide a KMS key ARN, or leave null to use CloudWatch's default encryption for the demo."
+  }
+}
+
+variable "flow_logs_permissions_boundary_arn" {
+  description = "Optional organization-approved IAM permissions boundary ARN for the flow-log delivery role."
+  type        = string
+  default     = null
+  validation {
+    condition     = var.flow_logs_permissions_boundary_arn == null || can(regex("^arn:(aws|aws-us-gov|aws-cn):iam::[0-9]{12}:policy/.+$", var.flow_logs_permissions_boundary_arn))
+    error_message = "Provide an IAM policy ARN for the permissions boundary, or null."
   }
 }
 
