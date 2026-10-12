@@ -26,6 +26,7 @@ def main() -> int:
     planned_vpc = None
     plan_error = None
     summary = None
+    diagnostics = []
     for line in process.stdout:
         try:
             event = json.loads(line)
@@ -44,10 +45,18 @@ def main() -> int:
                 planned_vpc = matches[0]["change"]["after"]
         elif event.get("type") == "test_summary":
             summary = event["test_summary"]
+        elif event.get("type") == "diagnostic":
+            diagnostic = event.get("diagnostic", {})
+            diagnostics.append(
+                f"{diagnostic.get('summary', event.get('@message', 'Terraform diagnostic'))}: "
+                f"{diagnostic.get('detail', '')}"
+            )
 
     result = process.wait()
     if result != 0 or summary is None or summary.get("status") != "pass":
         print(f"Terraform contract tests failed: {summary}, exit={result}", file=sys.stderr)
+        for diagnostic in diagnostics[:10]:
+            print(diagnostic[:2000], file=sys.stderr)
         return 1
     if plan_error is not None:
         print(plan_error, file=sys.stderr)
