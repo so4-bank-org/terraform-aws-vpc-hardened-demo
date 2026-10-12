@@ -30,7 +30,8 @@ For an IPAM-backed VPC, set `ipv4_ipam_pool_id` alongside `vpc_cidr`.
 The wrapper passes both to the AWS VPC resource, so AWS allocates that exact
 CIDR from the pool while the private subnet CIDRs remain deterministic. The
 platform team must verify that the pool is a private IPv4 pool in the workload
-Region, has the approved CIDR provisioned, and has no conflicting allocation.
+Region, has the approved CIDR provisioned, has no conflicting allocation, and
+has platform-managed allocation rules for netmask sizes and required VPC tags.
 Leaving the pool ID null preserves the direct-CIDR behavior of earlier
 releases. Do not set the vendored upstream module's `use_ipam_pool` flag for
 this fixed-subnet interface: it suppresses the explicit VPC CIDR. See the
