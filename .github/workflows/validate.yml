@@ -31,8 +31,8 @@ jobs:
         run: terraform init -backend=false -input=false -lockfile=readonly
       - name: Validate
         run: terraform validate -no-color
-      - name: Mocked plan contracts
-        run: terraform test -no-color
+      - name: Mocked plan contracts and IPAM wiring
+        run: python3 scripts/verify-ipam-test-plan.py
       - name: Scan Terraform configuration
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:

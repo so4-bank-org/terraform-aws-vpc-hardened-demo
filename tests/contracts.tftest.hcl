@@ -37,6 +37,25 @@ run "private_by_default" {
   }
 }
 
+run "allocate_explicit_cidr_from_ipam" {
+  command = plan
+  variables {
+    ipv4_ipam_pool_id = "ipam-pool-0123456789abcdef0"
+  }
+  assert {
+    condition     = output.vpc_cidr_block == var.vpc_cidr
+    error_message = "IPAM-backed VPCs must retain the reviewed CIDR used by the private subnets."
+  }
+}
+
+run "reject_invalid_ipam_pool_id" {
+  command = plan
+  variables {
+    ipv4_ipam_pool_id = "not-an-ipam-pool"
+  }
+  expect_failures = [var.ipv4_ipam_pool_id]
+}
+
 run "reject_public_address_space" {
   command = plan
   variables {

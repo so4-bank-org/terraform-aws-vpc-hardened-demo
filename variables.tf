@@ -29,6 +29,16 @@ variable "vpc_cidr" {
   }
 }
 
+variable "ipv4_ipam_pool_id" {
+  description = "Optional private IPv4 IPAM pool ID. AWS allocates the explicit vpc_cidr from this pool when set; leave null for existing direct-CIDR consumers."
+  type        = string
+  default     = null
+  validation {
+    condition     = var.ipv4_ipam_pool_id == null || can(regex("^ipam-pool-([0-9a-f]{8}|[0-9a-f]{17})$", var.ipv4_ipam_pool_id))
+    error_message = "ipv4_ipam_pool_id must be a valid IPAM pool ID, or null."
+  }
+}
+
 variable "availability_zones" {
   description = "At least two distinct AWS availability zones."
   type        = list(string)

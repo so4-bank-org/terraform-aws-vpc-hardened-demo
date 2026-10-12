@@ -24,6 +24,21 @@ private mirror.
   Terraform destroy so deletion of a VPC does not erase its log evidence.
 - Required environment, owner, cost-center and classification tags.
 - Private VPC and non-overlapping subnet CIDR validation.
+- Optional private IPv4 IPAM allocation of the exact, reviewed VPC CIDR.
+
+For an IPAM-backed VPC, set `ipv4_ipam_pool_id` alongside `vpc_cidr`.
+The wrapper passes both to the AWS VPC resource, so AWS allocates that exact
+CIDR from the pool while the private subnet CIDRs remain deterministic. The
+platform team must verify that the pool is a private IPv4 pool in the workload
+Region, has the approved CIDR provisioned, has no conflicting allocation, and
+has platform-managed allocation rules for netmask sizes and required VPC tags.
+Leaving the pool ID null preserves the direct-CIDR behavior of earlier
+releases. Do not set the vendored upstream module's `use_ipam_pool` flag for
+this fixed-subnet interface: it suppresses the explicit VPC CIDR. See the
+[AWS IPAM VPC procedure](https://docs.aws.amazon.com/vpc/latest/ipam/tutorials-create-vpc-ipam.html).
+Set the pool ID when creating a **new** VPC. Adding or changing it on an
+existing VPC forces replacement of that VPC and can replace dependent
+resources; review a migration plan and obtain change approval before doing so.
 
 The wrapper creates an IAM delivery role and restricts its trust policy to VPC
 flow logs from the current AWS account and Region. For production, set
@@ -74,10 +89,16 @@ the consumer's exact version pin and remove its bucket input. Never rewrite the
 existing `0.1.0` registry version. The 365-day default is for this demo; set
 the approved retention period for each real regulated workload.
 
+**Additive interface change for `v0.3.0`:** `ipv4_ipam_pool_id` links
+the explicit VPC CIDR to an approved IPAM pool. Publish a new immutable version
+and verify it appears in each consuming HCP organization before a consumer
+pins that version. An existing `0.2.0` consumer cannot pass this new input.
+
 ## Verification and release controls
 
 CI verifies the exact upstream Git tree, then runs format, initialization,
-validation, mocked plan tests, HIGH/CRITICAL Terraform configuration scanning,
+validation, mocked plan tests (including the planned VPC IPAM fields),
+HIGH/CRITICAL Terraform configuration scanning,
 and secret scanning without AWS credentials. Its actions are pinned to commit
 SHAs, it has read-only repository permission, and it never applies changes.
 Upstream source files are kept byte-for-byte, so formatting checks apply to
@@ -107,7 +128,7 @@ terraform fmt -check .
 terraform fmt -check examples/private
 terraform init -backend=false -lockfile=readonly
 terraform validate
-terraform test
+python3 scripts/verify-ipam-test-plan.py
 ```
 
 ## License

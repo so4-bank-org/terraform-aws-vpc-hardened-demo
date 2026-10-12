@@ -18,10 +18,15 @@ data "aws_region" "current" {}
 module "vpc" {
   source = "./modules/upstream"
 
-  name            = var.name
-  cidr            = var.vpc_cidr
-  azs             = var.availability_zones
-  private_subnets = var.private_subnet_cidrs
+  name              = var.name
+  cidr              = var.vpc_cidr
+  ipv4_ipam_pool_id = var.ipv4_ipam_pool_id
+  azs               = var.availability_zones
+  private_subnets   = var.private_subnet_cidrs
+
+  # Keep the explicit CIDR so the reviewed subnets remain deterministic. When
+  # a pool ID is set, AWS allocates this exact CIDR from that pool. Upstream's
+  # use_ipam_pool=true would discard the explicit CIDR and choose a range.
 
   # Private-only baseline: no internet gateway, public subnet, NAT or public IP.
   create_igw              = false
